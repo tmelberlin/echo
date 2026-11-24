@@ -9,7 +9,23 @@
 *{box-sizing:border-box;min-width:0}
 html,body{margin:0;height:100%;background:#12151c;overflow:hidden}
 body{color:#eef1f6;font-family:Inter,system-ui,sans-serif;display:flex;align-items:center;justify-content:center}
-#stage{width:960px;height:480px;padding:24px;display:grid;grid-template-columns:340px minmax(0,1fr) minmax(0,1fr);gap:16px;transform-origin:center}
+#stage{width:960px;height:480px;position:relative;transform-origin:center;flex:none}
+.page{position:absolute;inset:0;padding:24px 24px 28px}
+#p1{display:grid;grid-template-columns:340px minmax(0,1fr) minmax(0,1fr);gap:16px}
+#p2{display:none;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px}
+body.p2 #p1{display:none}body.p2 #p2{display:grid}
+.dots{position:absolute;bottom:0;left:50%;transform:translateX(-50%);display:flex}
+.dots button{background:none;border:0;padding:10px 8px;cursor:pointer}
+.dots i{display:block;width:8px;height:8px;border-radius:50%;background:#3a4252}
+body:not(.p2) .dots button:first-child i,body.p2 .dots button:last-child i{background:#9fb4ff}
+.t2{width:100%;border-collapse:collapse;font-size:14px}
+.t2 td{padding:6px 4px;border-bottom:1px solid #2a303c;white-space:nowrap}
+.t2 th{font-size:11px;font-weight:500;color:#a9b1c2;text-align:left;padding:0 4px 4px}
+.t2 .d{overflow:hidden;text-overflow:ellipsis;max-width:150px}
+.t2 .r{text-align:right}
+.t2 .cd{font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:16px;text-align:right;font-variant-numeric:tabular-nums}
+.warn{margin-top:auto;padding-top:8px;font-size:12px;color:#f2b45a;line-height:1.4;max-height:52px;overflow:hidden}
+.upd{font-size:11px;color:#a9b1c2;font-weight:400;letter-spacing:0;text-transform:none;float:right}
 .g{font-family:'Space Grotesk',sans-serif;font-weight:600}
 .card{background:#1c212b;border-radius:16px;padding:16px;display:flex;flex-direction:column}
 .lbl{font-size:13px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:#a9b1c2;margin-bottom:6px}
@@ -31,6 +47,7 @@ body.isnight #night{display:flex}
 </head>
 <body>
 <div id="stage">
+<div id="p1" class="page">
   <div style="display:flex;flex-direction:column;gap:16px">
     <div>
       <div id="clock" class="g" style="font-size:104px;line-height:1;letter-spacing:-3px">--:--</div>
@@ -51,6 +68,12 @@ body.isnight #night{display:flex}
   </div>
   <div class="card"><div class="lbl">Tram · Rathaus Lichtenberg</div><div id="depA" class="mut">Lade …</div></div>
   <div class="card"><div class="lbl">S+U Frankfurter Allee</div><div id="depB" class="mut">Lade …</div></div>
+</div>
+<div id="p2" class="page">
+  <div class="card"><div class="lbl">Tram · Rathaus Lichtenberg <span class="upd" id="updA"></span></div><div id="fullA" class="mut">Lade …</div><div class="warn" id="warnA"></div></div>
+  <div class="card"><div class="lbl">S+U Frankfurter Allee <span class="upd" id="updB"></span></div><div id="fullB" class="mut">Lade …</div><div class="warn" id="warnB"></div></div>
+</div>
+<div class="dots"><button type="button" id="go1" aria-label="Seite 1"><i></i></button><button type="button" id="go2" aria-label="Seite 2"><i></i></button></div>
 </div>
 <div id="night"><div class="t g" id="nclock">--:--</div><div class="s" id="ninfo"></div></div>
 
@@ -161,6 +184,50 @@ async function loadDeps(s){
 }
 function loadAll(){STOPS.forEach(loadDeps)}
 loadAll();setInterval(loadAll,30000);
+
+// ---------- Seite 2: alle Abfahrten, Echtzeit ----------
+const FULL=[{s:STOPS[0],el:'fullA',w:'warnA',u:'updA',deps:[]},{s:STOPS[1],el:'fullB',w:'warnB',u:'updB',deps:[]}];
+async function loadFull(f){
+  try{
+    const id=await stopId(f.s);
+    const qs=new URLSearchParams({duration:'60',results:'20',remarks:'true'});
+    for(const k in f.s.p)qs.set(k,f.s.p[k]);
+    const r=await (await fetch(API+'/stops/'+id+'/departures?'+qs)).json();
+    const list=(r.departures||r).filter(d=>d.when||d.plannedWhen);
+    f.deps=list;
+    const seen=new Set(),warns=[];
+    for(const d of list)for(const m of (d.remarks||[]))if(m.type==='warning'){const t=m.summary||m.text;if(t&&!seen.has(t)){seen.add(t);warns.push(t)}}
+    $(f.w).textContent=warns.slice(0,2).map(t=>'⚠ '+t).join('  ');
+    $(f.u).textContent='Stand '+hm(new Date());
+  }catch(e){$(f.el).textContent='BVG-Daten gerade nicht erreichbar'}
+}
+function renderFull(f){
+  const now=Date.now();
+  const deps=f.deps.filter(d=>new Date(d.when||d.plannedWhen)-now>-30000).slice(0,9);
+  if(!deps.length){if(f.deps.length||$(f.el).textContent!=='Lade …')$(f.el).textContent='Keine Abfahrten';return}
+  $(f.el).className='';
+  $(f.el).innerHTML='<table class="t2"><tr><th>Linie</th><th>Richtung</th><th>Gleis</th><th class="r">Plan</th><th class="r">in</th></tr>'+deps.map(d=>{
+    const t=new Date(d.when||d.plannedWhen),pl=new Date(d.plannedWhen||d.when);
+    const sec=Math.max(0,Math.round((t-now)/1000));
+    const dly=Math.round((d.delay||0)/60);
+    const cls=d.cancelled?'gone':(dly>=2?'late':'');
+    const cd=d.cancelled?'fällt aus':(sec<60?'jetzt':Math.floor(sec/60)+':'+pad(sec%60));
+    const plat=d.platform||d.plannedPlatform||'–';
+    return '<tr><td><span class="ln" style="display:inline-block;background:'+color(d.line)+'">'+esc(d.line?.name)+'</span></td><td class="d '+cls+'">'+esc(d.direction)+'</td><td>'+esc(plat)+'</td><td class="r">'+hm(pl)+(dly>=1?' <span class="late">+'+dly+'</span>':'')+'</td><td class="cd '+cls+'">'+cd+'</td></tr>';
+  }).join('')+'</table>';
+}
+function showPage(n){
+  document.body.classList.toggle('p2',n===2);
+  clearTimeout(window._back);
+  if(n===2){FULL.forEach(loadFull);FULL.forEach(renderFull);window._back=setTimeout(()=>showPage(1),3*60000)}
+}
+setInterval(()=>{if(document.body.classList.contains('p2'))FULL.forEach(loadFull)},10000);
+setInterval(()=>{if(document.body.classList.contains('p2'))FULL.forEach(renderFull)},1000);
+$('go1').addEventListener('click',()=>showPage(1));
+$('go2').addEventListener('click',()=>showPage(2));
+let tx=null;
+addEventListener('touchstart',e=>{tx=e.touches[0].clientX},{passive:true});
+addEventListener('touchend',e=>{if(tx===null)return;const dx=e.changedTouches[0].clientX-tx;tx=null;if(dx<-50)showPage(2);else if(dx>50)showPage(1)});
 }
 </script>
 </body>
