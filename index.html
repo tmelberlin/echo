@@ -14,10 +14,10 @@ body{color:#eef1f6;font-family:Inter,system-ui,sans-serif;display:flex;align-ite
 .card{background:#1c212b;border-radius:16px;padding:16px;display:flex;flex-direction:column}
 .lbl{font-size:13px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:#a9b1c2;margin-bottom:6px}
 .mut{color:#a9b1c2}
-.row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid #2a303c}
+.row{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid #2a303c}
 .ln{min-width:44px;text-align:center;font-weight:600;font-size:14px;border-radius:6px;padding:3px 4px;color:#fff}
 .dir{flex:1;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.min{font-size:18px;white-space:nowrap}
+.min{font-size:18px;white-space:nowrap}.dl{font-size:13px;font-weight:500;margin-left:4px}
 .late{color:#f2b45a}.gone{text-decoration:line-through;color:#8a93a5}
 .hours{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;font-size:13px;text-align:center}
 .hours div{background:#252b37;border-radius:10px;padding:8px 0}
@@ -38,7 +38,7 @@ body.isnight #night{display:flex}
     </div>
     <div class="card" style="gap:12px;flex:1">
       <div style="display:flex;align-items:center;gap:14px">
-        <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="9" cy="9" r="3.2" stroke="#f2b45a"/><path d="M9 2.5v1.3M3.8 4.3l.9.9M2.5 9h1.3M14.2 4.3l-.9.9" stroke="#f2b45a"/><path d="M8 20h9a4 4 0 0 0 .4-8 5 5 0 0 0-9.6 1.4A3.3 3.3 0 0 0 8 20z" stroke="#c9d2e3"/></svg>
+        <div id="icon" style="width:48px;height:48px;flex:none"></div>
         <div>
           <div id="temp" class="g" style="font-size:40px;line-height:1">–°</div>
           <div id="cond" class="mut" style="font-size:14px">Berlin</div>
@@ -59,8 +59,8 @@ body.isnight #night{display:flex}
 const API='https://v6.bvg.transport.rest';
 const NIGHT_FROM=22, NIGHT_TO=6;           // Nachtmodus 22–6 Uhr
 const STOPS=[
-  {el:'depA', q:'Rathaus Lichtenberg', p:{tram:true,bus:false,subway:false,suburban:false,regional:false,express:false}},
-  {el:'depB', q:'S+U Frankfurter Allee', p:{suburban:true,subway:true,tram:false,bus:false,regional:false,express:false}}
+  {el:'depA', walk:5, q:'Rathaus Lichtenberg', p:{tram:true,bus:false,subway:false,suburban:false,regional:false,express:false}},
+  {el:'depB', walk:10, q:'S+U Frankfurter Allee', p:{suburban:true,subway:true,tram:false,bus:false,regional:false,express:false}}
 ];
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -83,11 +83,30 @@ setInterval(tick,1000);tick();
 document.addEventListener('click',()=>{document.body.classList.remove('isnight');clearTimeout(window._n);window._n=setTimeout(tick,60000)});
 
 const WC={0:'klar',1:'überwiegend klar',2:'teils bewölkt',3:'bewölkt',45:'Nebel',48:'Nebel',51:'Nieselregen',53:'Nieselregen',55:'Nieselregen',61:'leichter Regen',63:'Regen',65:'starker Regen',66:'Eisregen',67:'Eisregen',71:'leichter Schnee',73:'Schnee',75:'starker Schnee',77:'Schneegriesel',80:'Schauer',81:'Schauer',82:'starke Schauer',85:'Schneeschauer',86:'Schneeschauer',95:'Gewitter',96:'Gewitter',99:'Gewitter'};
+function icon(c,day){
+  const sun='<circle cx="9" cy="9" r="3.2" stroke="#f2b45a"/><path d="M9 2.5v1.3M3.8 4.3l.9.9M2.5 9h1.3M14.2 4.3l-.9.9" stroke="#f2b45a"/>';
+  const moon='<path d="M13 4.5A5 5 0 1 0 17 11a4 4 0 0 1-4-6.5z" stroke="#c9c2f2"/>';
+  const cloud='<path d="M8 19h9a4 4 0 0 0 .4-8 5 5 0 0 0-9.6 1.4A3.3 3.3 0 0 0 8 19z" stroke="#c9d2e3"/>';
+  const big='<path d="M7 17h10a4.5 4.5 0 0 0 .4-9 5.5 5.5 0 0 0-10.6 1.6A3.7 3.7 0 0 0 7 17z" stroke="#c9d2e3"/>';
+  const rain='<path d="M9 19.5l-1 2M13 19.5l-1 2M17 19.5l-1 2" stroke="#8fb3ff"/>';
+  const snow='<path d="M9 20.5h.01M13 21.5h.01M17 20.5h.01" stroke="#eef1f6" stroke-width="2.4"/>';
+  const bolt='<path d="M13 17l-2 3h3l-2 3" stroke="#f2b45a"/>';
+  const fog='<path d="M4 15h16M6 18.5h12" stroke="#a9b1c2"/>';
+  let p;
+  if(c<=1)p=day?'<circle cx="12" cy="12" r="4.5" stroke="#f2b45a"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4L7 17M17 7l1.4-1.4" stroke="#f2b45a"/>':moon.replace('M13 4.5','M14 6');
+  else if(c===2)p=(day?sun:moon)+cloud;
+  else if(c===3)p=big;
+  else if(c<=48)p=big+fog;
+  else if(c>=95)p=big+bolt;
+  else if((c>=71&&c<=77)||c===85||c===86)p=big+snow;
+  else p=big+rain;
+  return '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" aria-hidden="true">'+p+'</svg>';
+}
 async function loadWeather(){
   try{
-    const u='https://api.open-meteo.com/v1/forecast?latitude=52.515&longitude=13.499&current=temperature_2m,weather_code&hourly=temperature_2m,precipitation_probability&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,sunrise,sunset&timezone=Europe%2FBerlin&forecast_days=2';
+    const u='https://api.open-meteo.com/v1/forecast?latitude=52.515&longitude=13.499&current=temperature_2m,weather_code,is_day&hourly=temperature_2m,precipitation_probability&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,sunrise,sunset&timezone=Europe%2FBerlin&forecast_days=2';
     const d=await (await fetch(u)).json();
-    const t=Math.round(d.current.temperature_2m);
+    const t=Math.round(d.current.temperature_2m);$('icon').innerHTML=icon(d.current.weather_code,d.current.is_day);
     $('temp').textContent=t+'°';
     $('cond').textContent='Berlin · '+(WC[d.current.weather_code]||'');
     weather=t+'°';
@@ -112,6 +131,12 @@ function color(l){
   if(l?.product==='tram')return '#cc0a22';
   return '#7a3e9d';
 }
+function short(t){
+  t=String(t||'');
+  const ring=t.match(/^Ringbahn S4[12]\s*(\S*)/);if(ring)return 'Ring '+ring[1];
+  t=t.replace(/^(S\+U|S|U)\s+/,'').replace(/\s*\(Berlin\)/,'').split(/[\/,]/)[0].replace(/Straße/,'Str.');
+  return t.trim();
+}
 async function stopId(s){
   if(s.id)return s.id;
   const r=await (await fetch(API+'/locations?results=1&addresses=false&poi=false&query='+encodeURIComponent(s.q))).json();
@@ -120,17 +145,17 @@ async function stopId(s){
 async function loadDeps(s){
   try{
     const id=await stopId(s);
-    const qs=new URLSearchParams({duration:'60',results:'12',remarks:'false'});
+    const qs=new URLSearchParams({duration:'90',results:'25',remarks:'false'});
     for(const k in s.p)qs.set(k,s.p[k]);
     const r=await (await fetch(API+'/stops/'+id+'/departures?'+qs)).json();
-    const deps=(r.departures||r).filter(d=>d.when||d.plannedWhen).slice(0,7);
+    const deps=(r.departures||r).filter(d=>(d.when||d.plannedWhen)&&(new Date(d.when||d.plannedWhen)-Date.now())/60000>=s.walk).slice(0,8);
     if(!deps.length){$(s.el).textContent='Keine Abfahrten';return}
     $(s.el).className='';
     $(s.el).innerHTML=deps.map(d=>{
       const m=Math.max(0,Math.round((new Date(d.when||d.plannedWhen)-Date.now())/60000));
-      const late=(d.delay||0)>=120;
+      const dly=Math.round((d.delay||0)/60);const late=dly>=2;
       const cls=d.cancelled?'gone':(late?'late':'');
-      return '<div class="row"><div class="ln" style="background:'+color(d.line)+'">'+esc(d.line?.name)+'</div><div class="dir '+cls+'">'+esc(d.direction)+'</div><div class="min g '+cls+'">'+(d.cancelled?'fällt aus':(m===0?'jetzt':m+'′'))+'</div></div>';
+      return '<div class="row"><div class="ln" style="background:'+color(d.line)+'">'+esc(d.line?.name)+'</div><div class="dir '+cls+'">'+esc(short(d.direction))+'</div><div class="min g '+cls+'">'+(d.cancelled?'fällt aus':m+'′'+(late?'<span class="dl">+'+dly+'</span>':''))+'</div></div>';
     }).join('');
   }catch(e){$(s.el).textContent='BVG-Daten gerade nicht erreichbar'}
 }
