@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Echo Show Dashboard</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600&display=swap" rel="stylesheet">
 <style>
@@ -43,6 +43,16 @@ body:not(.p2) .dots button:first-child i,body.p2 .dots button:last-child i{backg
 #night .t{font-size:180px;font-weight:500;letter-spacing:-6px;color:#a3302a;line-height:1}
 #night .s{font-size:20px;color:#7a2a25}
 body.isnight #night{display:flex}
+/* Handy hochkant */
+body.m{display:block;height:auto;overflow:auto}
+html:has(body.m){overflow:auto;height:auto}
+body.m #stage{width:auto;height:auto;transform:none!important}
+body.m .page{position:static;padding:16px 16px 64px}
+body.m #p1,body.m.p2 #p2{grid-template-columns:minmax(0,1fr);gap:14px}
+body.m #clock{font-size:84px}
+body.m .card{padding:14px}
+body.m .dots{position:fixed;bottom:0;padding-bottom:env(safe-area-inset-bottom);background:#12151ccc;border-radius:12px 12px 0 0}
+body.m .t2 .d{max-width:120px}
 </style>
 </head>
 <body>
@@ -91,7 +101,7 @@ const pad=n=>String(n).padStart(2,'0');
 const hm=d=>pad(d.getHours())+':'+pad(d.getMinutes());
 let weather=null;
 
-function fit(){const s=Math.min(innerWidth/960,innerHeight/480);$('stage').style.transform='scale('+s+')'}
+function fit(){const m=innerHeight>innerWidth&&innerWidth<760;document.body.classList.toggle('m',m);if(m)return;const s=Math.min(innerWidth/960,innerHeight/480);$('stage').style.transform='scale('+s+')'}
 addEventListener('resize',fit);fit();
 
 function tick(){
@@ -226,8 +236,8 @@ setInterval(()=>{if(document.body.classList.contains('p2'))FULL.forEach(renderFu
 $('go1').addEventListener('click',()=>showPage(1));
 $('go2').addEventListener('click',()=>showPage(2));
 let tx=null;
-addEventListener('touchstart',e=>{tx=e.touches[0].clientX},{passive:true});
-addEventListener('touchend',e=>{if(tx===null)return;const dx=e.changedTouches[0].clientX-tx;tx=null;if(dx<-50)showPage(2);else if(dx>50)showPage(1)});
+let ty=0;addEventListener('touchstart',e=>{tx=e.touches[0].clientX;ty=e.touches[0].clientY},{passive:true});
+addEventListener('touchend',e=>{if(tx===null)return;const dx=e.changedTouches[0].clientX-tx,dy=e.changedTouches[0].clientY-ty;tx=null;if(Math.abs(dy)>Math.abs(dx))return;if(dx<-50)showPage(2);else if(dx>50)showPage(1)});
 }
 </script>
 </body>
